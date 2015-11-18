@@ -2085,7 +2085,10 @@ class User implements IDBAccessObject {
 	 */
 	public function getNewMessageLinks() {
 		$talks = array();
-		if ( !Hooks::run( 'UserRetrieveNewTalks', array( &$this, &$talks ) ) ) {
+		global $wgStaticPageDump;
+		if ( isset( $wgStaticPageDump ) ) {
+			return $talks;
+		} elseif ( !Hooks::run( 'UserRetrieveNewTalks', array( &$this, &$talks ) ) ) {
 			return $talks;
 		} elseif ( !$this->getNewtalk() ) {
 			return array();
@@ -2134,6 +2137,11 @@ class User implements IDBAccessObject {
 	 * @return bool True if the user has new messages
 	 */
 	protected function checkNewtalk( $field, $id ) {
+		global $wgStaticPageDump;
+		if ( isset( $wgStaticPageDump ) ) {
+			return false;
+		}
+
 		$dbr = wfGetDB( DB_SLAVE );
 
 		$ok = $dbr->selectField( 'user_newtalk', $field, array( $field => $id ), __METHOD__ );
@@ -2149,6 +2157,10 @@ class User implements IDBAccessObject {
 	 * @return bool True if successful, false otherwise
 	 */
 	protected function updateNewtalk( $field, $id, $curRev = null ) {
+		global $wgStaticPageDump;
+		if ( isset( $wgStaticPageDump ) ) {
+			return true;
+		}
 		// Get timestamp of the talk page revision prior to the current one
 		$prevRev = $curRev ? $curRev->getPrevious() : false;
 		$ts = $prevRev ? $prevRev->getTimestamp() : null;
@@ -2174,6 +2186,10 @@ class User implements IDBAccessObject {
 	 * @return bool True if successful, false otherwise
 	 */
 	protected function deleteNewtalk( $field, $id ) {
+		global $wgStaticPageDump;
+		if ( isset( $wgStaticPageDump ) ) {
+			return true;
+		}
 		$dbw = wfGetDB( DB_MASTER );
 		$dbw->delete( 'user_newtalk',
 			array( $field => $id ),
