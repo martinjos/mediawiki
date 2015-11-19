@@ -463,7 +463,13 @@ abstract class ResourceLoaderModule {
 				return 1;
 			}
 
-			$dbr = wfGetDB( DB_SLAVE );
+			global $wgStaticPageDump;
+			if ( isset ( $wgStaticPageDump ) ) {
+				$dbr = wfGetDB( DB_SLAVE, array(), $wgStaticPageDump['db_name'] );
+			} else {
+				$dbr = wfGetDB( DB_SLAVE );
+			}
+
 			$msgBlobMtime = $dbr->selectField( 'msg_resource',
 				'mr_timestamp',
 				array(
