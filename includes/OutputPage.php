@@ -307,6 +307,9 @@ class OutputPage extends ContextSource {
 	 */
 	private $copyrightUrl;
 
+	private $mDonePinyin = false;
+	private $mKMandarinTable = null;
+
 	/**
 	 * Constructor for OutputPage. This should not be called directly.
 	 * Instead a new RequestContext should be created and it will implicitly create
@@ -2223,6 +2226,32 @@ class OutputPage extends ContextSource {
 		}
 	}
 
+	private function addPinyin($text) {
+		if ( null === $this->mKMandarinTable ) {
+			global $wgKMandarinFName;
+			$fh = fopen($wgKMandarinFName, 'r');
+			$this->mKMandarinTable = array();
+			while ($line = fgets($fh)) {
+				$vals = preg_split("/\t/", trim($line), 2);
+				$char = mb_convert_encoding(pack('n', (hexdec(substr($vals[0], 2)))), 'UTF-8', 'UTF-16BE');
+				$this->mKMandarinTable[$char] = $vals[1];
+			}
+			fclose($fh);
+		}
+
+		$pos = 0;
+		$ttext = "";
+		while ( preg_match( '/[\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}]/u', $text, $matches, PREG_OFFSET_CAPTURE, $pos ) ) {
+			$ttext .= substr($text, $pos, $matches[0][1] - $pos);
+			$char = mb_substr(substr($text, $matches[0][1], 4), 0, 1, 'UTF-8');
+			$pos = $matches[0][1] + strlen($char);
+			$ttext .= " " . $this->mKMandarinTable[$char] . $char . " ";
+		}
+		$ttext .= substr($text, $pos);
+
+		return $ttext;
+	}
+
 	/**
 	 * Finally, all the text has been munged and accumulated into
 	 * the object, let's actually output it:
@@ -2284,6 +2313,13 @@ class OutputPage extends ContextSource {
 		$frameOptions = $this->getFrameOptions();
 		if ( $frameOptions ) {
 			$response->header( "X-Frame-Options: $frameOptions" );
+		}
+
+		global $wgKMandarinFName;
+		if ( isset( $wgKMandarinFName ) && ! $this->mDonePinyin ) {
+			$this->mBodytext = $this->addPinyin( $this->mBodytext );
+			$this->mHTMLtitle = $this->addPinyin( $this->mHTMLtitle );
+			$this->mDonePinyin = true;
 		}
 
 		if ( $this->mArticleBodyOnly ) {
