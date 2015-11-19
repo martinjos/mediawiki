@@ -113,6 +113,13 @@ class ResourceLoader implements LoggerAwareInterface {
 		$skin = $context->getSkin();
 		$lang = $context->getLanguage();
 
+		global $wgStaticPageDump;
+		if ( isset ( $wgStaticPageDump ) ) {
+			$dbr2 = wfGetDB( DB_SLAVE, array(), $wgStaticPageDump['db_name'] );
+		} else {
+			$dbr2 = $dbr;
+		}
+
 		// Batched version of ResourceLoaderModule::getFileDependencies
 		$vary = "$skin|$lang";
 		$res = $dbr->select( 'module_deps', array( 'md_module', 'md_deps' ), array(
@@ -149,7 +156,7 @@ class ResourceLoader implements LoggerAwareInterface {
 		}
 		$modulesWithoutMessages = array_flip( $modules ); // Will be trimmed down by the loop below
 		if ( count( $modulesWithMessages ) ) {
-			$res = $dbr->select( 'msg_resource', array( 'mr_resource', 'mr_timestamp' ), array(
+			$res = $dbr2->select( 'msg_resource', array( 'mr_resource', 'mr_timestamp' ), array(
 					'mr_resource' => $modulesWithMessages,
 					'mr_lang' => $lang
 				), __METHOD__

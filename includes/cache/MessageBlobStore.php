@@ -130,7 +130,12 @@ class MessageBlobStore {
 		}
 
 		try {
-			$dbw = wfGetDB( DB_MASTER );
+			global $wgStaticPageDump;
+			if ( isset ( $wgStaticPageDump ) ) {
+				$dbw = wfGetDB( DB_MASTER, array(), $wgStaticPageDump['db_name'] );
+			} else {
+				$dbw = wfGetDB( DB_MASTER );
+			}
 			$success = $dbw->insert( 'msg_resource', array(
 					'mr_lang' => $lang,
 					'mr_resource' => $name,
@@ -166,7 +171,12 @@ class MessageBlobStore {
 	 *   the given module/language pair.
 	 */
 	public function updateModule( $name, ResourceLoaderModule $module, $lang ) {
-		$dbw = wfGetDB( DB_MASTER );
+		global $wgStaticPageDump;
+		if ( isset ( $wgStaticPageDump ) ) {
+			$dbw = wfGetDB( DB_MASTER, array(), $wgStaticPageDump['db_name'] );
+		} else {
+			$dbw = wfGetDB( DB_MASTER );
+		}
 		$row = $dbw->selectRow( 'msg_resource', 'mr_blob',
 			array( 'mr_resource' => $name, 'mr_lang' => $lang ),
 			__METHOD__
@@ -202,7 +212,12 @@ class MessageBlobStore {
 	 */
 	public function updateMessage( $key ) {
 		try {
-			$dbw = wfGetDB( DB_MASTER );
+			global $wgStaticPageDump;
+			if ( isset ( $wgStaticPageDump ) ) {
+				$dbw = wfGetDB( DB_MASTER, array(), $wgStaticPageDump['db_name'] );
+			} else {
+				$dbw = wfGetDB( DB_MASTER );
+			}
 
 			// Keep running until the updates queue is empty.
 			// Due to update conflicts, the queue might not be emptied
@@ -245,7 +260,12 @@ class MessageBlobStore {
 		try {
 			// Not using TRUNCATE, because that needs extra permissions,
 			// which maybe not granted to the database user.
-			$dbw = wfGetDB( DB_MASTER );
+			global $wgStaticPageDump;
+			if ( isset ( $wgStaticPageDump ) ) {
+				$dbw = wfGetDB( DB_MASTER, array(), $wgStaticPageDump['db_name'] );
+			} else {
+				$dbw = wfGetDB( DB_MASTER );
+			}
 			$dbw->delete( 'msg_resource', '*', __METHOD__ );
 		} catch ( Exception $e ) {
 			wfDebug( __METHOD__ . " failed to update DB: $e\n" );
@@ -274,7 +294,12 @@ class MessageBlobStore {
 	 * @return array Updates queue
 	 */
 	private function getUpdatesForMessage( $key, $prevUpdates = null ) {
-		$dbw = wfGetDB( DB_MASTER );
+		global $wgStaticPageDump;
+		if ( isset ( $wgStaticPageDump ) ) {
+			$dbw = wfGetDB( DB_MASTER, array(), $wgStaticPageDump['db_name'] );
+		} else {
+			$dbw = wfGetDB( DB_MASTER );
+		}
 
 		if ( is_null( $prevUpdates ) ) {
 			$rl = $this->getResourceLoader();
@@ -364,7 +389,12 @@ class MessageBlobStore {
 		}
 
 		$retval = array();
-		$dbr = wfGetDB( DB_SLAVE );
+		global $wgStaticPageDump;
+		if ( isset ( $wgStaticPageDump ) ) {
+			$dbr = wfGetDB( DB_SLAVE, array(), $wgStaticPageDump['db_name'] );
+		} else {
+			$dbr = wfGetDB( DB_SLAVE );
+		}
 		$res = $dbr->select( 'msg_resource',
 			array( 'mr_blob', 'mr_resource', 'mr_timestamp' ),
 			array( 'mr_resource' => $modules, 'mr_lang' => $lang ),
