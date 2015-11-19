@@ -1539,6 +1539,39 @@ class Revision implements IDBAccessObject {
 		// Caching may be beneficial for massive use of external storage
 		global $wgRevisionCacheExpiry;
 
+		global $wgStaticPageDump;
+		if ( isset ( $wgStaticPageDump ) ) {
+			$titleObj = $this->getTitle();
+			$title = $titleObj->getPrefixedText();
+
+			if ($titleObj->getNamespace() == NS_TEMPLATE) {
+				return "";
+			}
+
+			$sdb = new SQLite3($wgStaticPageDump['page_index']);
+			$q = $sdb->prepare('select block_start, length from page_index left join page_file_block on (block_start = start) where title = ?');
+			$q->bindParam(1, $title);
+			$sres = $q->execute();
+			$svals = $sres->fetchArray();
+			$sdb->close();
+
+			$fh = fopen($wgStaticPageDump['page_dump'], 'r');
+			fseek($fh, $svals['block_start']);
+			$bzdata = fread($fh, $svals['length']);
+			fclose($fh);
+
+			$xdata = bzdecompress($bzdata);
+			preg_match('/\<title\>'.preg_quote($title, '/').'\<\/title\>/', $xdata, $matches, PREG_OFFSET_CAPTURE);
+			preg_match('/\<text[^>]*\>/', $xdata, $matches2, PREG_OFFSET_CAPTURE, $matches[0][1]);
+			preg_match('/\<\/text\>/', $xdata, $matches3, PREG_OFFSET_CAPTURE, $matches[0][1]);
+			$start = $matches2[0][1] + strlen($matches2[0][0]);
+			$len = $matches3[0][1] - $start;
+			$text = substr($xdata, $start, $len);
+			$bzdata = $xdata = null;
+
+			return htmlspecialchars_decode($text, ENT_XML1);
+		}
+
 		$cache = ObjectCache::getMainWANInstance();
 		$textId = $this->getTextId();
 		$key = wfMemcKey( 'revisiontext', 'textid', $textId );
