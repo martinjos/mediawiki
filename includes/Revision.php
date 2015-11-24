@@ -1539,6 +1539,21 @@ class Revision implements IDBAccessObject {
 		// Caching may be beneficial for massive use of external storage
 		global $wgRevisionCacheExpiry;
 
+		global $wgStaticPageDump;
+		if ( isset ( $wgStaticPageDump ) ) {
+		    $title = $this->getTitle()->getPrefixedText();
+			$res = null;
+
+		    $sdb = new SQLite3($wgStaticPageDump['page_index']);
+		    #$sdb = new SQLite3(':memory:');
+		    #$q = $sdb->prepare('select block_start, length from page_index left join page_file_block on (block_start = start) where title = ?');
+		    #$q->bindParam(1, $title);
+		    #$res = $q->execute();
+		    $sdb->close();
+
+		    return "You are looking at " . $title . " at ".date('c')." result is " . ($sdb ? "okay" : "NOT okay");
+		}
+
 		$cache = ObjectCache::getMainWANInstance();
 		$textId = $this->getTextId();
 		$key = wfMemcKey( 'revisiontext', 'textid', $textId );
@@ -1556,6 +1571,14 @@ class Revision implements IDBAccessObject {
 			$this->mTextRow = null;
 		} else {
 			$row = null;
+		}
+
+		global $wgStaticPageDump;
+		if ( isset( $wgStaticPageDump ) ) {
+			$db_name = $wgStaticPageDump['db_name'];
+			$pages = $wgStaticPageDump['page_dump'];
+			//$fh = bzopen($index, 'r');
+			$data = "";
 		}
 
 		if ( !$row ) {
