@@ -308,7 +308,7 @@ class OutputPage extends ContextSource {
 	private $copyrightUrl;
 
 	private $mDonePinyin = false;
-	private $mKMandarinTable = null;
+	private $mPinyin = null;
 
 	/**
 	 * Constructor for OutputPage. This should not be called directly.
@@ -2227,16 +2227,9 @@ class OutputPage extends ContextSource {
 	}
 
 	private function addPinyin($text) {
-		if ( null === $this->mKMandarinTable ) {
-			global $wgKMandarinFName;
-			$fh = fopen($wgKMandarinFName, 'r');
-			$this->mKMandarinTable = array();
-			while ($line = fgets($fh)) {
-				$vals = preg_split("/\t/", trim($line), 2);
-				$char = mb_convert_encoding(pack('n', (hexdec(substr($vals[0], 2)))), 'UTF-8', 'UTF-16BE');
-				$this->mKMandarinTable[$char] = $vals[1];
-			}
-			fclose($fh);
+		global $wgPinyinFname;
+		if (!$this->mPinyin) {
+			$this->mPinyin = json_decode(file_get_contents($wgPinyinFname));
 		}
 
 		$pos = 0;
@@ -2245,7 +2238,9 @@ class OutputPage extends ContextSource {
 			$ttext .= substr($text, $pos, $matches[0][1] - $pos);
 			$char = mb_substr(substr($text, $matches[0][1], 4), 0, 1, 'UTF-8');
 			$pos = $matches[0][1] + strlen($char);
-			$ttext .= " " . $this->mKMandarinTable[$char] . $char . " ";
+			$py = $this->mPinyin->{$char};
+			if (!$py) $py = "FALSE";
+			$ttext .= " <span title='$char'>" . $py . "</span> ";
 		}
 		$ttext .= substr($text, $pos);
 
@@ -2315,8 +2310,8 @@ class OutputPage extends ContextSource {
 			$response->header( "X-Frame-Options: $frameOptions" );
 		}
 
-		global $wgKMandarinFName;
-		if ( isset( $wgKMandarinFName ) && ! $this->mDonePinyin ) {
+		global $wgPinyinFname;
+		if ( isset( $wgPinyinFname ) && ! $this->mDonePinyin ) {
 			$this->mBodytext = $this->addPinyin( $this->mBodytext );
 			$this->mHTMLtitle = $this->addPinyin( $this->mHTMLtitle );
 			$this->mDonePinyin = true;
