@@ -2226,21 +2226,51 @@ class OutputPage extends ContextSource {
 		}
 	}
 
-	private function addPinyin($text) {
-		global $wgPinyinFname;
-		if (!$this->mPinyin) {
-			$this->mPinyin = json_decode(file_get_contents($wgPinyinFname));
+	private function splicePinyin(&$ttext, &$chars, $maxwordlen, $tooltips) {
+		global $wgPinyin;
+		for ($len = $maxwordlen; $len >= 1; $len--) {
+			$word = implode('', array_slice($chars, 0, $len));
+			$py = $wgPinyin[$word];
+			if (!$py && $len == 1)
+				$py = "FALSE";
+			if ($py) {
+				if ($tooltips) {
+					$ttext .= " <span title='$word'>$py</span> ";
+				} else {
+					$ttext .= " $py ";
+				}
+				$chars = array_slice($chars, $len);
+				break;
+			}
 		}
+	}
 
+	private function addPinyin($text, $tooltips=false) {
 		$pos = 0;
 		$ttext = "";
+		#$ttext .= "date: ".date(DATE_ATOM)."<br>\n";
+		$maxwordlen = 4;
 		while ( preg_match( '/[\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}]/u', $text, $matches, PREG_OFFSET_CAPTURE, $pos ) ) {
 			$ttext .= substr($text, $pos, $matches[0][1] - $pos);
-			$char = mb_substr(substr($text, $matches[0][1], 4), 0, 1, 'UTF-8');
-			$pos = $matches[0][1] + strlen($char);
-			$py = $this->mPinyin->{$char};
-			if (!$py) $py = "FALSE";
-			$ttext .= " <span title='$char'>" . $py . "</span> ";
+			$pos = $matches[0][1];
+
+			if ( !preg_match( '/\A[\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}]/u', mb_substr(substr($text, $pos, 4), 0, 1, 'UTF-8') ) ) {
+				$ttext .= "preg_match failed on ".substr($text, $pos, 4)."(".urlencode(substr($text, $pos, 4)).")";
+				break;
+			}
+			$chars = array();
+			while ( preg_match( '/\A[\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}]/u', mb_substr( substr($text, $pos, 4), 0, 1, 'UTF-8' ) ) ) {
+				$char = mb_substr(substr($text, $pos, 4), 0, 1, 'UTF-8');
+				$chars[] = $char;
+				$pos += strlen($char);
+				if (sizeof($chars) >= $maxwordlen) {
+					$this->splicePinyin($ttext, $chars, $maxwordlen, $tooltips);
+				}
+			}
+
+			while (sizeof($chars) > 0) {
+				$this->splicePinyin($ttext, $chars, $maxwordlen, $tooltips);
+			}
 		}
 		$ttext .= substr($text, $pos);
 
@@ -2310,10 +2340,11 @@ class OutputPage extends ContextSource {
 			$response->header( "X-Frame-Options: $frameOptions" );
 		}
 
-		global $wgPinyinFname;
-		if ( isset( $wgPinyinFname ) && ! $this->mDonePinyin ) {
-			$this->mBodytext = $this->addPinyin( $this->mBodytext );
+		global $wgPinyin;
+		if ( isset( $wgPinyin ) && ! $this->mDonePinyin ) {
+			$this->mBodytext = $this->addPinyin( $this->mBodytext, true );
 			$this->mHTMLtitle = $this->addPinyin( $this->mHTMLtitle );
+			$this->mPagetitle = $this->addPinyin( $this->mPagetitle );
 			$this->mDonePinyin = true;
 		}
 
